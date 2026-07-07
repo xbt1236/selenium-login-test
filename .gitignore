@@ -1,0 +1,36 @@
+﻿# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# 虚拟环境
+.venv/
+venv/
+env/
+
+# 测试报告（本地生成，每个人自己跑）
+reports/
+
+# pytest 缓存
+.pytest_cache/
+
+# webdriver-manager 驱动缓存
+.wdm/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 系统文件
+Thumbs.db
+.DS_Store
+
+# 临时文件
+*.ndjson
+
+node_modules/
