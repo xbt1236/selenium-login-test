@@ -1,6 +1,6 @@
 ﻿# 🔐 登录功能自动化测试项目
 
-一个完整的软件测试入门项目，涵盖**手工测试用例设计**与**Selenium 自动化测试**两大核心技能，适合作为软件测试岗位实习的简历项目。
+一个完整的软件测试进阶项目，涵盖**手工测试用例设计**、**Selenium 自动化测试**、**Page Object 工程化架构**三大核心技能，适合作为软件测试岗位实习的简历项目。
 
 ---
 
@@ -11,7 +11,8 @@
 1. **需求分析** → 理解登录功能的需求规格
 2. **手工用例设计** → 用等价类划分、边界值分析、错误推测法等方法设计 12 条手工用例
 3. **自动化脚本编写** → 将核心流程转化为 5 条 Selenium + pytest 自动化用例
-4. **测试执行与报告** → 运行测试并生成 HTML 可视化报告
+4. **Page Object 重构** → 引入页面对象模式，分离元素定位与业务逻辑，提升可维护性
+5. **测试执行与报告** → 运行测试并生成 HTML 可视化报告
 
 测试目标为本地模拟登录页（`test_pages/login.html`），界面参考了经典的 [the-internet](https://the-internet.herokuapp.com/login) 测试网站。
 
@@ -21,19 +22,52 @@
 
 ```
 selenium-login-test/
-├── test_cases/                  # 自动化测试脚本
-│   └── test_login.py           # 登录功能 Selenium 自动化测试（5 条用例）
-├── test_pages/                  # 被测页面
-│   └── login.html              # 本地模拟登录页
-├── docs/                        # 测试文档
-│   └── test_case_login.xlsx    # 手工测试用例 Excel（12 条，6 类测试方法）
-├── reports/                     # 测试报告输出
-│   └── report.html             # pytest-html 生成的测试报告
-├── build_xlsx.mjs              # 生成手工用例 Excel 的脚本
-├── requirements.txt            # Python 依赖
-├── .gitignore                  # Git 忽略规则
-└── README.md                   # 项目说明
+├── pages/                        # Page Object 页面层（元素定位 + 操作封装）
+│   ├── __init__.py
+│   ├── base_page.py             # 基类：通用查找、等待、点击、输入
+│   ├── login_page.py            # 登录页对象（用户名、密码、登录按钮、提示消息）
+│   └── secure_page.py           # 安全区域页对象（登出、成功消息）
+├── test_cases/                   # 测试用例层（只写业务逻辑）
+│   ├── conftest.py              # pytest fixture：driver 创建与销毁
+│   └── test_login.py            # 登录功能自动化测试（5 条用例）
+├── test_pages/                   # 被测页面
+│   └── login.html               # 本地模拟登录页
+├── docs/                         # 测试文档
+│   └── test_case_login.xlsx     # 手工测试用例 Excel（12 条，6 类测试方法）
+├── reports/                      # 测试报告输出
+│   └── report.html              # pytest-html 生成的测试报告
+├── build_xlsx.mjs               # 生成手工用例 Excel 的脚本
+├── requirements.txt             # Python 依赖
+├── .gitignore                   # Git 忽略规则
+└── README.md                    # 项目说明
 ```
+
+---
+
+## 🏗 架构设计：Page Object 模式
+
+```
+┌─────────────────────────────────────┐
+│   test_cases/test_login.py          │  ← 只写业务逻辑，不碰 DOM
+│   "点击登录 → 断言提示消息"          │
+└──────────────┬──────────────────────┘
+               │ 调用
+┌──────────────▼──────────────────────┐
+│   pages/login_page.py               │  ← 封装页面元素和操作
+│   pages/secure_page.py              │    元素定位集中管理
+│   pages/base_page.py                │    页面结构变了只改这里
+└──────────────┬──────────────────────┘
+               │ 驱动
+┌──────────────▼──────────────────────┐
+│   test_cases/conftest.py            │  ← driver 生命周期管理
+│   Selenium WebDriver (Edge)         │
+└─────────────────────────────────────┘
+```
+
+**这样做的好处**：
+- 🔧 **页面结构变化时**，只需改 `pages/` 下的定位器，测试用例不用动
+- 📖 **测试用例可读性强**，一眼能看懂在测什么
+- ♻️ **页面操作可复用**，多个测试用例共享同一个页面方法
 
 ---
 
@@ -47,6 +81,7 @@ selenium-login-test/
 | **pytest-html** | 生成可视化 HTML 测试报告 |
 | **webdriver-manager** | 自动管理浏览器驱动（Edge / Chrome） |
 | **Microsoft Edge (headless)** | 无头浏览器执行环境 |
+| **Page Object Pattern** | 页面对象设计模式，工程化架构 |
 
 ---
 
@@ -96,7 +131,7 @@ selenium-login-test/
 ### 1. 克隆项目
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/XBT1236/selenium-login-test.git
 cd selenium-login-test
 ```
 
@@ -141,42 +176,26 @@ pytest test_cases/test_login.py::TestLogin::test_login_success -v
 
 ### 切换浏览器
 
-默认使用 **Edge 浏览器 + headless 模式**（无需打开浏览器窗口）。
-
-如需使用 Chrome，修改 `test_cases/test_login.py`：
+默认使用 **Edge 浏览器 + headless 模式**。如需使用 Chrome，修改 `test_cases/conftest.py` 中的 driver fixture：
 
 ```python
-# 将 Edge 相关代码替换为：
+# 替换 Edge 为 Chrome：
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
 driver = webdriver.Chrome(
     service=Service(ChromeDriverManager().install()),
-    options=chrome_options
+    options=options
 )
 ```
 
 ### 关闭 headless 模式
 
-如需看到浏览器实际操作过程，在 `test_login.py` 中注释掉：
+如需看到浏览器实际操作过程，在 `conftest.py` 中注释掉：
 
 ```python
-# edge_options.add_argument("--headless")
+# options.add_argument("--headless=new")
 ```
-
-### 修改测试目标 URL
-
-默认测试本地页面 `test_pages/login.html`。如需测试线上网站，修改 fixture 中的 `BASE_URL`。
-
----
-
-## 📊 测试报告示例
-
-运行成功后，`reports/report.html` 将展示：
-
-- **Environment**：Python 版本、平台、浏览器信息
-- **Results Summary**：Pass / Fail / Error 统计
-- **每个用例的详细信息**：执行时间、断言结果、失败截图（如有）
 
 ---
 
@@ -186,8 +205,8 @@ driver = webdriver.Chrome(
 |------|----------|
 | `ModuleNotFoundError: No module named 'selenium'` | 确认已在虚拟环境中执行 `pip install -r requirements.txt` |
 | `WebDriverException: 'msedgedriver' executable needs to be in PATH` | Edge 未安装或版本过旧，更新 Edge 或切换为 Chrome |
-| `ConnectionRefusedError` | 检查 `test_pages/login.html` 文件是否存在，BASE_URL 是否正确 |
-| 中文乱码 | 确保文件编码为 UTF-8，pytest 添加 `-p no:cacheprovider` |
+| `ConnectionRefusedError` | 检查 `test_pages/login.html` 文件是否存在 |
+| 中文乱码 | 确保文件编码为 UTF-8 |
 
 ---
 
@@ -196,7 +215,8 @@ driver = webdriver.Chrome(
 - ✅ 独立完成 **手工用例设计 + 自动化实现** 全流程
 - ✅ 掌握 **等价类划分、边界值分析、错误推测法** 等经典测试方法
 - ✅ 熟练使用 **Selenium WebDriver + pytest** 企业级测试框架
-- ✅ 具备 **Page Object 设计模式** 的工程化思维
+- ✅ 采用 **Page Object 设计模式**，页面操作与测试逻辑分离，代码可维护性高
+- ✅ 使用 **pytest fixture** 管理驱动生命周期，工程化程度高
 - ✅ 输出规范的 **HTML 测试报告** 和 **Excel 手工用例**
 
 ---
@@ -205,11 +225,11 @@ driver = webdriver.Chrome(
 
 完成本项目后，建议按以下方向进阶：
 
-1. **Page Object 模式重构** → 将页面操作封装到独立类中，提升代码可维护性
-2. **数据驱动测试** → 用 `@pytest.mark.parametrize` + JSON/CSV 驱动用例
-3. **CI/CD 集成** → 接入 GitHub Actions，实现代码推送自动运行测试
-4. **接口测试** → 学习 `requests` + `pytest` 做 API 测试
-5. **性能测试** → 学习 `Locust` 或 `JMeter` 做压力测试
+1. **数据驱动测试** → 用 `@pytest.mark.parametrize` + JSON/CSV 驱动用例，减少重复代码
+2. **CI/CD 集成** → 接入 GitHub Actions，实现代码推送自动运行测试
+3. **接口测试** → 学习 `requests` + `pytest` 做 API 测试
+4. **性能测试** → 学习 `Locust` 或 `JMeter` 做压力测试
+5. **App 端测试** → 学习 Appium 做移动端自动化测试
 
 参考文档：[实习准备/学习路线与项目方向.md](../实习准备/学习路线与项目方向.md)
 
