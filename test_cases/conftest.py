@@ -1,9 +1,11 @@
 ﻿# -*- coding: utf-8 -*-
 """
 pytest 公共配置
-将 WebDriver 的创建和销毁提取为 fixture，供所有测试用例共享
+- WebDriver fixture：创建/销毁 Edge 浏览器
+- 数据驱动：从 JSON 文件加载测试数据
 """
 
+import json
 import os
 import pytest
 from selenium import webdriver
@@ -14,6 +16,7 @@ from webdriver_manager.microsoft import EdgeChromiumDriverManager
 # 项目根目录 & 登录页 URL
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOGIN_PAGE = "file:///" + os.path.join(PROJECT_DIR, "test_pages", "login.html").replace("\\", "/")
+DATA_DIR = os.path.join(PROJECT_DIR, "data")
 
 
 @pytest.fixture
@@ -36,3 +39,11 @@ def driver():
 def login_page_url():
     """登录页 URL"""
     return LOGIN_PAGE
+
+
+def load_login_scenarios():
+    """从 JSON 文件加载登录场景测试数据，供 @pytest.mark.parametrize 使用"""
+    filepath = os.path.join(DATA_DIR, "login_data.json")
+    with open(filepath, "r", encoding="utf-8-sig") as f:
+        data = json.load(f)
+    return data["login_scenarios"]

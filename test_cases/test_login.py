@@ -1,9 +1,10 @@
 ﻿# -*- coding: utf-8 -*-
 """
-登录功能自动化测试（Page Object 重构版）
+登录功能自动化测试（数据驱动版）
 
-将页面元素和操作封装到 pages/ 目录下的页面类中，
-测试用例只关注业务逻辑，不直接操作 DOM。
+架构：Page Object 模式 + JSON 数据驱动
+- 测试数据统一放在 data/login_data.json 中
+- 新增场景只需加一条 JSON 记录，无需改测试代码
 
 运行方式：
     pytest test_cases/test_login.py -v
@@ -11,54 +12,35 @@
 """
 
 import time
+import pytest
 from pages.login_page import LoginPage
 from pages.secure_page import SecurePage
+from test_cases.conftest import load_login_scenarios
 
 
 class TestLogin:
     """登录功能自动化测试"""
 
-    def test_login_success(self, driver, login_page_url):
-        """正确用户名 + 正确密码 → 提示登录成功"""
+    @pytest.mark.parametrize("scenario", load_login_scenarios(), ids=lambda s: s["id"])
+    def test_login_scenarios(self, driver, login_page_url, scenario):
+        """数据驱动：根据 JSON 数据执行登录场景测试"""
         driver.get(login_page_url)
         login_page = LoginPage(driver)
 
-        login_page.login("tomsmith", "SuperSecretPassword!")
+        # 执行登录操作
+        if scenario.get("skip_username"):
+            login_page.enter_password(scenario["password"])
+            login_page.click_login()
+        else:
+            login_page.login(scenario["username"], scenario["password"])
         time.sleep(0.5)
 
-        secure_page = SecurePage(driver)
-        assert "You logged into a secure area!" in secure_page.get_success_message()
-
-    def test_login_wrong_password(self, driver, login_page_url):
-        """正确用户名 + 错误密码 → 提示密码无效"""
-        driver.get(login_page_url)
-        login_page = LoginPage(driver)
-
-        login_page.login("tomsmith", "wrongpassword")
-        time.sleep(0.5)
-
-        assert "Your password is invalid!" in login_page.get_flash_message()
-
-    def test_login_empty_username(self, driver, login_page_url):
-        """不输入用户名 → 提示用户名无效"""
-        driver.get(login_page_url)
-        login_page = LoginPage(driver)
-
-        login_page.enter_password("SuperSecretPassword!")
-        login_page.click_login()
-        time.sleep(0.5)
-
-        assert "Your username is invalid!" in login_page.get_flash_message()
-
-    def test_login_wrong_username(self, driver, login_page_url):
-        """不存在的用户名 → 提示用户名无效"""
-        driver.get(login_page_url)
-        login_page = LoginPage(driver)
-
-        login_page.login("nobody", "SuperSecretPassword!")
-        time.sleep(0.5)
-
-        assert "Your username is invalid!" in login_page.get_flash_message()
+        # 验证结果
+        if scenario["expect_success"]:
+            secure_page = SecurePage(driver)
+            assert scenario["expected_message"] in secure_page.get_success_message()
+        else:
+            assert scenario["expected_message"] in login_page.get_flash_message()
 
     def test_logout(self, driver, login_page_url):
         """先登录成功，再点击登出 → 提示已登出"""

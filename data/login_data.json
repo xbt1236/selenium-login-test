@@ -1,0 +1,37 @@
+﻿{
+  "login_scenarios": [
+    {
+      "id": "TC_LOGIN_001",
+      "name": "正确用户名+正确密码 → 登录成功",
+      "username": "tomsmith",
+      "password": "SuperSecretPassword!",
+      "expect_success": true,
+      "expected_message": "You logged into a secure area!"
+    },
+    {
+      "id": "TC_LOGIN_002",
+      "name": "正确用户名+错误密码 → 提示密码无效",
+      "username": "tomsmith",
+      "password": "wrongpassword",
+      "expect_success": false,
+      "expected_message": "Your password is invalid!"
+    },
+    {
+      "id": "TC_LOGIN_003",
+      "name": "用户名为空 → 提示用户名无效",
+      "username": "",
+      "password": "SuperSecretPassword!",
+      "expect_success": false,
+      "expected_message": "Your username is invalid!",
+      "skip_username": true
+    },
+    {
+      "id": "TC_LOGIN_004",
+      "name": "不存在用户名 → 提示用户名无效",
+      "username": "nobody",
+      "password": "SuperSecretPassword!",
+      "expect_success": false,
+      "expected_message": "Your username is invalid!"
+    }
+  ]
+}
